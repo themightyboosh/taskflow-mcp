@@ -131,12 +131,12 @@ Tags are processed in this priority order:
 
 1. **think like [X]** - Sets persona context for all subsequent processing
 2. **interrogate** - Asks clarifying questions
-3. **expand** - Adds technical detail
-4. **rewrite** - Rewrites description
+3. **rewrite** - Rewrites description for clarity
+4. **expand** - Adds technical detail
 5. **critique** - Provides feedback (with persona if set)
-6. **user stories** - Generates user stories
+6. **user stories** - Generates user stories (appended to task description)
 7. **to-do** - Adds to todo list (no implementation)
-8. **code** - Triggers implementation
+8. **code** - Triggers implementation (ONLY tag that writes code)
 
 Each tag is removed after successful processing.
 

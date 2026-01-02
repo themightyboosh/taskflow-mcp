@@ -13,8 +13,8 @@ const TAG_PRIORITY = {
 
   // Phase 2: Task Refinement
   'interrogate': 2,
-  'expand': 3,
-  'rewrite': 4,
+  'rewrite': 3,
+  'expand': 4,
   'critique': 5,
   'user stories': 6,
 

@@ -44,12 +44,12 @@ Tools are direct function calls that perform specific actions.
 **Priority Order:**
 1. `think like [X]` - Set persona context
 2. `interrogate` - Ask questions
-3. `expand` - Add detail
-4. `rewrite` - Rewrite description
+3. `rewrite` - Rewrite description
+4. `expand` - Add detail
 5. `critique` - Provide feedback
-6. `user stories` - Generate stories
+6. `user stories` - Generate stories (appended to task description)
 7. `to-do` - Add to todo list
-8. `code` - Trigger implementation
+8. `code` - Trigger implementation (ONLY tag that writes code)
 
 **Example Usage:**
 ```

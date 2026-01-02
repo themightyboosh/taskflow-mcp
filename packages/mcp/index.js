@@ -57,7 +57,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: 'process_tasks',
-        description: 'Process all tasks with MCP tags. Processes tags in priority order: think like → interrogate → expand → rewrite → critique → user stories → to-do → code. Removes each tag after successful processing.',
+        description: 'Process all tasks with MCP tags. Processes tags in priority order: think like → interrogate → rewrite → expand → critique → user stories → to-do → code. Only "code" tag triggers implementation. Removes each tag after successful processing.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -542,7 +542,7 @@ Format as:
 
 ...
 
-After you provide these user stories, I will save them as a comment on the task.`;
+After you provide these user stories, I will APPEND them to the end of the task description.`;
         break;
       }
 
@@ -591,7 +591,7 @@ Your Job:
 4. Create a brief implementation checklist
 5. **THEN: Start implementing the task**
 
-This is a "code" tag - after your analysis, you should proceed directly to implementation using available tools.
+IMPORTANT: The "code" tag is the ONLY tag that triggers implementation. All other tags (interrogate, rewrite, expand, critique, user stories, to-do) are for analysis and planning only. After your analysis of this "code" tagged task, you should proceed directly to implementation using available tools.
 
 Format your initial analysis as:
 
