@@ -98,6 +98,83 @@ export async function getTask(pageId) {
 }
 
 /**
+ * Get full page content including all blocks
+ * @param {string} pageId - Notion page ID
+ * @returns {Promise<object>} Full task object with blocks
+ */
+export async function getTaskWithBlocks(pageId) {
+  return retryWithBackoff(async () => {
+    const page = await notion.pages.retrieve({ page_id: pageId });
+    const blocks = await notion.blocks.children.list({ block_id: pageId });
+
+    return {
+      ...formatTask(page),
+      blocks: blocks.results.map(block => formatBlock(block)),
+    };
+  });
+}
+
+/**
+ * Format a Notion block into a readable structure
+ * @param {object} block - Raw Notion block object
+ * @returns {object} Formatted block object
+ */
+function formatBlock(block) {
+  const formatted = {
+    id: block.id,
+    type: block.type,
+    hasChildren: block.has_children,
+  };
+
+  // Extract text content based on block type
+  switch (block.type) {
+    case 'paragraph':
+      formatted.text = block.paragraph.rich_text.map(t => t.plain_text).join('');
+      break;
+    case 'heading_1':
+      formatted.text = block.heading_1.rich_text.map(t => t.plain_text).join('');
+      break;
+    case 'heading_2':
+      formatted.text = block.heading_2.rich_text.map(t => t.plain_text).join('');
+      break;
+    case 'heading_3':
+      formatted.text = block.heading_3.rich_text.map(t => t.plain_text).join('');
+      break;
+    case 'bulleted_list_item':
+      formatted.text = block.bulleted_list_item.rich_text.map(t => t.plain_text).join('');
+      break;
+    case 'numbered_list_item':
+      formatted.text = block.numbered_list_item.rich_text.map(t => t.plain_text).join('');
+      break;
+    case 'to_do':
+      formatted.text = block.to_do.rich_text.map(t => t.plain_text).join('');
+      formatted.checked = block.to_do.checked;
+      break;
+    case 'code':
+      formatted.text = block.code.rich_text.map(t => t.plain_text).join('');
+      formatted.language = block.code.language;
+      break;
+    case 'quote':
+      formatted.text = block.quote.rich_text.map(t => t.plain_text).join('');
+      break;
+    case 'callout':
+      formatted.text = block.callout.rich_text.map(t => t.plain_text).join('');
+      formatted.icon = block.callout.icon;
+      break;
+    case 'image':
+      formatted.url = block.image.type === 'external'
+        ? block.image.external.url
+        : block.image.file.url;
+      formatted.caption = block.image.caption?.map(t => t.plain_text).join('') || '';
+      break;
+    default:
+      formatted.text = `[${block.type} block]`;
+  }
+
+  return formatted;
+}
+
+/**
  * Remove a tag from a task's MCP multi-select property
  * @param {string} pageId - Notion page ID
  * @param {string} tagName - Tag to remove

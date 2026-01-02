@@ -247,8 +247,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // ============================================================================
 
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  return {
-    resources: [
+  try {
+    // Get all tasks with MCP tags
+    const tasks = await notionClient.queryTasksWithMcpTags(100);
+
+    // Create resources for collections
+    const collectionResources = [
       {
         uri: 'notion://tasks/ready',
         name: 'Ready Tasks with MCP Tags',
@@ -267,31 +271,76 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
         description: 'All tasks with MCP tags regardless of status',
         mimeType: 'application/json',
       },
-    ],
-  };
+    ];
+
+    // Create resources for individual tasks
+    const taskResources = tasks.map(task => ({
+      uri: `notion://task/${task.id}`,
+      name: task.title,
+      description: `${task.status} | Tags: ${task.mcpTags.join(', ')} | ${task.description.substring(0, 100)}${task.description.length > 100 ? '...' : ''}`,
+      mimeType: 'application/json',
+    }));
+
+    return {
+      resources: [...collectionResources, ...taskResources],
+    };
+  } catch (error) {
+    console.error('Error listing resources:', error);
+    // Return at least the collection resources even if task listing fails
+    return {
+      resources: [
+        {
+          uri: 'notion://tasks/ready',
+          name: 'Ready Tasks with MCP Tags',
+          description: 'All tasks in Ready status that have MCP tags for processing',
+          mimeType: 'application/json',
+        },
+        {
+          uri: 'notion://tasks/in-progress',
+          name: 'In Progress Tasks with MCP Tags',
+          description: 'All tasks currently In Progress that have MCP tags',
+          mimeType: 'application/json',
+        },
+        {
+          uri: 'notion://tasks/with-mcp-tags',
+          name: 'All Tasks with MCP Tags',
+          description: 'All tasks with MCP tags regardless of status',
+          mimeType: 'application/json',
+        },
+      ],
+    };
+  }
 });
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const uri = request.params.uri;
 
   try {
-    let tasks;
+    let data;
 
-    switch (uri) {
-      case 'notion://tasks/ready':
-        tasks = await notionClient.queryTasksByStatus('Ready', true);
-        break;
+    // Check if this is an individual task URI
+    const taskMatch = uri.match(/^notion:\/\/task\/(.+)$/);
+    if (taskMatch) {
+      const taskId = taskMatch[1];
+      data = await notionClient.getTaskWithBlocks(taskId);
+    } else {
+      // Handle collection URIs
+      switch (uri) {
+        case 'notion://tasks/ready':
+          data = await notionClient.queryTasksByStatus('Ready', true);
+          break;
 
-      case 'notion://tasks/in-progress':
-        tasks = await notionClient.queryTasksByStatus('In Progress', true);
-        break;
+        case 'notion://tasks/in-progress':
+          data = await notionClient.queryTasksByStatus('In Progress', true);
+          break;
 
-      case 'notion://tasks/with-mcp-tags':
-        tasks = await notionClient.queryTasksWithMcpTags(100);
-        break;
+        case 'notion://tasks/with-mcp-tags':
+          data = await notionClient.queryTasksWithMcpTags(100);
+          break;
 
-      default:
-        throw new Error(`Unknown resource URI: ${uri}`);
+        default:
+          throw new Error(`Unknown resource URI: ${uri}`);
+      }
     }
 
     return {
@@ -299,7 +348,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
         {
           uri,
           mimeType: 'application/json',
-          text: JSON.stringify(tasks, null, 2),
+          text: JSON.stringify(data, null, 2),
         },
       ],
     };
