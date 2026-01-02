@@ -492,25 +492,27 @@ ${taskDetails}
 
 Your Job:
 1. Read the task carefully (including any images if present)
-2. Ask 3-5 meaningful, specific questions that would help clarify:
+2. If anything is genuinely unclear or ambiguous, ask specific questions about:
    - Success criteria
    - Technical constraints
    - User expectations
    - Integration points
    - Implementation approach
 3. For each question, explain WHY you're asking it
-4. Provide a brief critique of the current task description
-5. **IMMEDIATELY save your analysis as a comment to this Notion task**
+4. Only ask questions that would meaningfully improve the task - don't ask obvious questions to fill a quota
+5. Provide a brief critique of the current task description
+6. **IMMEDIATELY save your analysis as a comment to this Notion task**
 
 Format your response as:
 
 ## Questions
+[If the task is already clear, state "No clarifying questions needed - the task is sufficiently clear."]
+[Otherwise, list only meaningful questions:]
 1. [Question] - **Why:** [Explanation]
 2. [Question] - **Why:** [Explanation]
-...
 
 ## Critique
-[Your analysis of what's unclear, missing, or could be improved]
+[Your analysis of what's unclear, missing, or could be improved. If the task is well-defined, acknowledge this and suggest next steps.]
 
 CRITICAL: After generating this analysis, you MUST use the add_comment tool to save it to the Notion task (ID: ${args.taskId}). This is NOT optional - it is part of processing the "interrogate" tag.
 
