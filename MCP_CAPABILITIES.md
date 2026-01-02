@@ -785,6 +785,27 @@ What tasks are in progress with MCP tags?
 
 ---
 
+## Required Actions per Tag
+
+Each MCP tag requires the AI to perform specific actions. These are NOT optional:
+
+| Tag | Required Action | Tool to Use | Details |
+|-----|----------------|-------------|---------|
+| `interrogate` | Add comment | `add_comment` | Save questions and critique as comment |
+| `expand` | Add comment | `add_comment` | Save expanded description as comment |
+| `critique` | Add comment | `add_comment` | Save critique analysis as comment |
+| `estimate` | Add comment | `add_comment` | Save effort estimate as comment |
+| `confirm` | Add comment | `add_comment` | Save verification report as comment |
+| `rewrite` | Update description | `update_task` | REPLACE task description with rewrite |
+| `user stories` | Append to description | `update_task` | APPEND user stories to existing description |
+| `to-do` | Add to todo list | Built-in | Add task to Claude Code's todo tracker |
+| `code` | **Write code** | Read/Edit/Write/Bash | **Actually implement the feature** |
+| `think like [X]` | Set context | None | Store persona for subsequent tags |
+
+**CRITICAL:** The prompts explicitly instruct the AI to perform these actions. Each prompt includes mandatory instructions like "you MUST use the add_comment tool" or "you MUST use the update_task tool." These actions are part of processing the tag, not optional follow-ups.
+
+---
+
 ## Best Practices
 
 ### 1. Use Tag Combinations Strategically

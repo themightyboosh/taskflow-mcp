@@ -20,14 +20,16 @@ taskflow-mcp is a Model Context Protocol (MCP) server that automates Notion task
 - **Automatic tag removal** - Tags cleared after successful processing
 - **Dry-run mode** - Preview what would happen without making changes
 
-### AI-Powered Workflows
-- **interrogate** - Claude asks clarifying questions about requirements
-- **expand** - Adds technical detail, APIs, edge cases, testing approach
-- **rewrite** - Rewrites task for maximum clarity
-- **critique** - Provides constructive feedback (with optional persona)
-- **user stories** - Generates user stories from task requirements
-- **to-do** - Adds to todo list without implementing
-- **code** - Analyzes task and automatically starts implementation
+### AI-Powered Workflows (with Automatic Actions)
+- **interrogate** - Claude asks clarifying questions → **Saves as comment**
+- **expand** - Adds technical detail, APIs, edge cases → **Saves as comment**
+- **rewrite** - Rewrites task for clarity → **Updates task description**
+- **estimate** - Estimates effort and refactoring → **Saves as comment**
+- **critique** - Provides constructive feedback → **Saves as comment**
+- **user stories** - Generates user stories → **Appends to description**
+- **to-do** - Adds to todo list → **No code written**
+- **code** - **Actually implements the feature (WRITES CODE)**
+- **confirm** - Verifies implementation complete → **Saves verification as comment**
 
 ---
 
@@ -152,10 +154,11 @@ Each tag is removed after successful processing.
 **MCP Tags:** `interrogate`, `expand`, `user stories`
 
 **What happens:**
-1. Claude asks questions about auth method, session management, etc.
-2. Adds technical detail (JWT vs session, password requirements)
-3. Generates user stories for different auth scenarios
+1. **interrogate** → Claude asks questions about auth method, session management → **Saves as comment**
+2. **expand** → Adds technical detail (JWT vs session, password requirements) → **Saves as comment**
+3. **user stories** → Generates user stories for different auth scenarios → **Appends to task description**
 4. All three tags removed after processing
+5. All actions performed automatically - no manual intervention needed
 
 ### Example 2: Expert Review
 
@@ -163,10 +166,11 @@ Each tag is removed after successful processing.
 **MCP Tags:** `think like a security engineer`, `critique`, `expand`
 
 **What happens:**
-1. Sets persona: "security engineer"
-2. Critiques task from security perspective (PCI compliance, data protection)
-3. Expands with security-focused technical details
+1. **think like** → Sets persona: "security engineer"
+2. **critique** → Critiques from security perspective (PCI compliance, data protection) → **Saves as comment**
+3. **expand** → Expands with security-focused technical details → **Saves as comment**
 4. All tags removed
+5. All comments automatically added to Notion task
 
 ### Example 3: Full Implementation
 
@@ -174,10 +178,11 @@ Each tag is removed after successful processing.
 **MCP Tags:** `interrogate`, `expand`, `code`
 
 **What happens:**
-1. Claude asks about implementation approach, storage, etc.
-2. Adds technical detail (CSS variables, localStorage, toggle component)
-3. Reviews requirements and starts implementing
-4. All tags removed (implementation continues)
+1. **interrogate** → Claude asks about implementation approach, storage → **Saves as comment**
+2. **expand** → Adds technical detail (CSS variables, localStorage, toggle component) → **Saves as comment**
+3. **code** → Reviews requirements → **WRITES THE ACTUAL CODE** (creates files, edits components, etc.)
+4. All tags removed after processing
+5. Feature is fully implemented - not just analyzed
 
 ---
 

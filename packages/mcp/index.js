@@ -57,7 +57,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: 'process_tasks',
-        description: 'Process all tasks with MCP tags. Processes tags in priority order: think like → interrogate → rewrite → estimate → expand → critique → user stories → to-do → code → confirm. Only "code" tag triggers implementation. "confirm" verifies implementation is complete. Removes each tag after successful processing.',
+        description: 'Process all tasks with MCP tags. Processes tags in priority order: think like → interrogate → rewrite → estimate → expand → critique → user stories → to-do → code → confirm. Each tag triggers specific actions: interrogate/expand/critique/estimate/confirm add comments, rewrite updates description, user stories appends to description, to-do adds to todo list, code writes actual implementation. "code" is ONLY tag that writes code. Removes each tag after successful processing.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -460,6 +460,7 @@ Your Job:
    - Implementation approach
 3. For each question, explain WHY you're asking it
 4. Provide a brief critique of the current task description
+5. **IMMEDIATELY save your analysis as a comment to this Notion task**
 
 Format your response as:
 
@@ -471,7 +472,16 @@ Format your response as:
 ## Critique
 [Your analysis of what's unclear, missing, or could be improved]
 
-After you provide this analysis, I will save it as a comment on the task.`;
+CRITICAL: After generating this analysis, you MUST use the add_comment tool to save it to the Notion task (ID: ${args.taskId}). This is NOT optional - it is part of processing the "interrogate" tag.
+
+FEEDBACK TO USER: After saving the comment, provide thoughtful feedback explaining:
+- What questions you asked and why they matter
+- What gaps or ambiguities you identified in the task
+- What the user should clarify before proceeding
+- How this interrogation improves the task quality
+- Next recommended steps (e.g., "expand the task after clarifying X")
+
+DO NOT just say "Comment added." Explain the THINKING behind your analysis and its impact on the task.`;
         break;
       }
 
@@ -490,6 +500,7 @@ Your Job:
 3. Include clear acceptance criteria
 4. List potential edge cases to handle
 5. Suggest testing approach
+6. **IMMEDIATELY save your expanded description as a comment to this Notion task**
 
 Return an EXPANDED task description that Claude Code can implement without ambiguity.
 
@@ -500,7 +511,16 @@ Format as a complete, detailed task description with sections for:
 - Edge Cases
 - Testing
 
-After you provide this expansion, I will save it as a comment on the task.`;
+CRITICAL: After generating this expansion, you MUST use the add_comment tool to save it to the Notion task (ID: ${args.taskId}). This is NOT optional - it is part of processing the "expand" tag.
+
+FEEDBACK TO USER: After saving the comment, provide thoughtful feedback explaining:
+- What technical details you added and why they're essential
+- What was missing from the original task description
+- How this expansion makes the task more implementable
+- What risks or edge cases you identified
+- What the next step should be (e.g., "ready for code tag" or "needs critique first")
+
+DO NOT just say "Comment added." Explain your REASONING for the technical decisions and recommendations.`;
         break;
       }
 
@@ -516,6 +536,7 @@ Your Job:
 3. Suggest improvements to the approach
 4. Rate complexity (1-5, where 5 is most complex)
 5. Estimate implementation steps
+6. **IMMEDIATELY save your critique as a comment to this Notion task**
 
 Be constructive and specific in your feedback. Focus on making this task successful.
 
@@ -537,7 +558,16 @@ Format your response as:
 2. [Step]
 ...
 
-After you provide this critique, I will save it as a comment on the task.`;
+CRITICAL: After generating this critique, you MUST use the add_comment tool to save it to the Notion task (ID: ${args.taskId}). This is NOT optional - it is part of processing the "critique" tag.
+
+FEEDBACK TO USER: After saving the comment, provide thoughtful feedback explaining:
+- What issues or risks you identified (summarize key concerns)
+- Why these issues matter for implementation success
+- How your suggested improvements address the problems
+- What the complexity rating means for planning
+- Whether the task is ready to proceed or needs refinement
+
+If a persona was used, explain how that perspective influenced your critique. DO NOT just say "Comment added." Share the KEY INSIGHTS from your analysis.`;
         break;
       }
 
@@ -547,10 +577,10 @@ After you provide this critique, I will save it as a comment on the task.`;
 ${taskDetails}
 
 Your Job:
-Generate 2-4 relevant user stories in the format:
-"As a [user type], I want [goal] so that [benefit]"
-
-Consider different user perspectives and scenarios. Make stories specific and actionable.
+1. Generate 2-4 relevant user stories in the format:
+   "As a [user type], I want [goal] so that [benefit]"
+2. Consider different user perspectives and scenarios. Make stories specific and actionable.
+3. **IMMEDIATELY append these user stories to the task description in Notion**
 
 Format as:
 
@@ -564,7 +594,20 @@ Format as:
 
 ...
 
-After you provide these user stories, I will APPEND them to the end of the task description.`;
+CRITICAL: After generating these user stories, you MUST:
+1. First, read the current task description
+2. Then use the update_task tool to APPEND your user stories to the END of the existing description for task ID: ${args.taskId}
+3. Do NOT replace the description - APPEND to it with "\n\n---\n\n" + your user stories
+This is NOT optional - it is part of processing the "user stories" tag.
+
+FEEDBACK TO USER: After updating the description, provide thoughtful feedback explaining:
+- What user stories you generated and what perspectives they represent
+- Why these specific stories capture the task requirements
+- How these stories clarify acceptance criteria
+- What user types or scenarios are covered
+- How this helps implementation planning
+
+DO NOT just say "Description updated." Explain the RATIONALE behind each user story and how they improve the task.`;
         break;
       }
 
@@ -579,6 +622,7 @@ Your Job:
 3. Remove ambiguity
 4. Keep it concise but complete
 5. Make it implementable
+6. **IMMEDIATELY update the task description in Notion with your rewrite**
 
 Return a rewritten task description that's crystal clear.
 
@@ -597,12 +641,21 @@ Format as:
 ## Notes
 [Any additional context or constraints]
 
-After you provide this rewrite, I will update the task description.`;
+CRITICAL: After generating this rewrite, you MUST use the update_task tool to REPLACE the task description with your new version for task ID: ${args.taskId}. This is NOT optional - it is part of processing the "rewrite" tag.
+
+FEEDBACK TO USER: After updating the description, provide thoughtful feedback explaining:
+- What was unclear or ambiguous in the original task
+- How your rewrite improves clarity and implementability
+- What structure you imposed (Goal, Approach, Acceptance Criteria, Notes)
+- What assumptions you made or gaps you filled
+- Why the task is now ready for the next step
+
+DO NOT just say "Description updated." Explain the TRANSFORMATION you made and why it matters.`;
         break;
       }
 
       case 'prepare_for_coding': {
-        promptText = `This task is marked for implementation. Review and prepare it for coding.
+        promptText = `This task is marked for implementation. Review and prepare it for coding, then IMPLEMENT IT.
 
 ${taskDetails}
 
@@ -611,9 +664,14 @@ Your Job:
 2. List files that will likely need changes
 3. Identify dependencies or blockers
 4. Create a brief implementation checklist
-5. **THEN: Start implementing the task**
+5. **START IMPLEMENTING THE TASK IMMEDIATELY**
 
-IMPORTANT: The "code" tag is the ONLY tag that triggers implementation. All other tags (interrogate, rewrite, expand, critique, user stories, to-do) are for analysis and planning only. After your analysis of this "code" tagged task, you should proceed directly to implementation using available tools.
+CRITICAL INSTRUCTIONS:
+- The "code" tag is the ONLY tag that triggers implementation
+- All other tags (interrogate, rewrite, expand, critique, user stories, to-do) are for analysis only
+- After your brief analysis, you MUST proceed directly to implementation
+- Use Read, Edit, Write, Bash tools to make the actual code changes
+- This is NOT optional - the "code" tag means WRITE THE CODE NOW
 
 Format your initial analysis as:
 
@@ -632,7 +690,17 @@ Format your initial analysis as:
 
 **Ready to code:** [Yes/No - explain if no]
 
-After providing this analysis, proceed with implementation if ready.`;
+MANDATORY: After providing this brief analysis, immediately use your available tools (Read, Edit, Write, Bash, etc.) to implement the task. Do NOT just analyze - you must write the actual code. Processing the "code" tag means IMPLEMENTING the feature, not just planning it.
+
+FEEDBACK TO USER: During and after implementation, provide thoughtful feedback explaining:
+- What files you're reading/modifying and why
+- What implementation approach you chose and the reasoning behind it
+- What challenges or decisions arose during coding
+- What you accomplished and what remains (if blocked)
+- How your implementation meets the acceptance criteria
+- Any testing or verification performed
+
+DO NOT just say "Implementation complete." Walk the user through your THOUGHT PROCESS as you code, explaining key decisions and trade-offs. If you encounter blockers, explain what you tried and why it didn't work.`;
         break;
       }
 
@@ -648,6 +716,7 @@ Your Job:
 4. Note any architectural considerations
 5. Suggest optimizations or improvements
 6. Estimate time range (hours/days)
+7. **IMMEDIATELY save your estimate as a comment to this Notion task**
 
 Consider:
 - Current codebase complexity
@@ -682,7 +751,16 @@ Format your response as:
 ## Recommendation
 [Suggested approach and priorities]
 
-After you provide this estimate, I will save it as a comment on the task.`;
+CRITICAL: After generating this estimate, you MUST use the add_comment tool to save it to the Notion task (ID: ${args.taskId}). This is NOT optional - it is part of processing the "estimate" tag.
+
+FEEDBACK TO USER: After saving the comment, provide thoughtful feedback explaining:
+- The estimated size and time range with justification
+- Why this estimate is reasonable given the scope
+- What factors could increase or decrease the effort
+- What refactoring opportunities you identified and their value
+- Whether this should be broken into smaller tasks
+
+DO NOT just say "Comment added." Explain your REASONING behind the estimate and help the user make planning decisions.`;
         break;
       }
 
@@ -697,6 +775,7 @@ Your Job:
 3. Verify all acceptance criteria are met
 4. Identify any gaps or incomplete work
 5. Confirm the implementation is production-ready
+6. **IMMEDIATELY save your verification report as a comment to this Notion task**
 
 Check for:
 - Files that should have been created/modified exist
@@ -734,7 +813,16 @@ Format your response as:
 ## Recommendation
 [Should this task be marked as Done? Or what needs to be finished?]
 
-After you provide this verification, I will save it as a comment on the task.`;
+CRITICAL: After generating this verification report, you MUST use the add_comment tool to save it to the Notion task (ID: ${args.taskId}). This is NOT optional - it is part of processing the "confirm" tag.
+
+FEEDBACK TO USER: After saving the comment, provide thoughtful feedback explaining:
+- The implementation status (Complete/Incomplete/Partially Complete) with evidence
+- What was successfully accomplished (highlight key achievements)
+- What files were changed and why those changes matter
+- Any gaps or incomplete work that needs attention
+- Whether this task can be marked as Done or what blockers remain
+
+DO NOT just say "Comment added." Give an EXECUTIVE SUMMARY of the implementation quality and readiness.`;
         break;
       }
 
