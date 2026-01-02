@@ -118,7 +118,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'update_task',
-        description: 'Update task properties (description, status, or remove tags)',
+        description: 'Update task properties (description or remove tags). IMPORTANT: Status changes are NOT allowed - users must change status manually in Notion.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -129,11 +129,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             description: {
               type: 'string',
               description: 'New task description',
-            },
-            status: {
-              type: 'string',
-              enum: ['Ready', 'In Progress', 'Done'],
-              description: 'New task status',
             },
             removeTags: {
               type: 'array',
@@ -206,10 +201,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           await notionClient.updateTaskDescription(args.taskId, args.description);
         }
 
-        if (args.status) {
-          await notionClient.updateTaskStatus(args.taskId, args.status);
-        }
-
         if (args.removeTags && args.removeTags.length > 0) {
           for (const tag of args.removeTags) {
             await notionClient.removeTag(args.taskId, tag);
@@ -220,7 +211,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: 'text',
-              text: 'Task updated successfully',
+              text: 'Task updated successfully. Note: Status changes must be done manually in Notion.',
             },
           ],
         };
@@ -523,6 +514,8 @@ Format your response as:
 
 CRITICAL: After generating this analysis, you MUST use the add_comment tool to save it to the Notion task (ID: ${args.taskId}). This is NOT optional - it is part of processing the "interrogate" tag.
 
+⚠️  IMPORTANT RESTRICTION: You are NOT allowed to change the task status. The user will update the task status manually in Notion. Do NOT use any tool or method to change status from Ready to In Progress or to Done.
+
 FEEDBACK TO USER: After saving the comment, provide thoughtful feedback explaining:
 - What questions you asked and why they matter
 - What gaps or ambiguities you identified in the task
@@ -561,6 +554,8 @@ Format as a complete, detailed task description with sections for:
 - Testing
 
 CRITICAL: After generating this expansion, you MUST use the add_comment tool to save it to the Notion task (ID: ${args.taskId}). This is NOT optional - it is part of processing the "expand" tag.
+
+⚠️  IMPORTANT RESTRICTION: You are NOT allowed to change the task status. The user will update the task status manually in Notion. Do NOT use any tool or method to change status from Ready to In Progress or to Done.
 
 FEEDBACK TO USER: After saving the comment, provide thoughtful feedback explaining:
 - What technical details you added and why they're essential
@@ -609,6 +604,8 @@ Format your response as:
 
 CRITICAL: After generating this critique, you MUST use the add_comment tool to save it to the Notion task (ID: ${args.taskId}). This is NOT optional - it is part of processing the "critique" tag.
 
+⚠️  IMPORTANT RESTRICTION: You are NOT allowed to change the task status. The user will update the task status manually in Notion. Do NOT use any tool or method to change status from Ready to In Progress or to Done.
+
 FEEDBACK TO USER: After saving the comment, provide thoughtful feedback explaining:
 - What issues or risks you identified (summarize key concerns)
 - Why these issues matter for implementation success
@@ -648,6 +645,8 @@ CRITICAL: After generating these user stories, you MUST:
 2. Then use the update_task tool to APPEND your user stories to the END of the existing description for task ID: ${args.taskId}
 3. Do NOT replace the description - APPEND to it with "\n\n---\n\n" + your user stories
 This is NOT optional - it is part of processing the "user stories" tag.
+
+⚠️  IMPORTANT RESTRICTION: You are NOT allowed to change the task status. The user will update the task status manually in Notion. Do NOT use any tool or method to change status from Ready to In Progress or to Done.
 
 FEEDBACK TO USER: After updating the description, provide thoughtful feedback explaining:
 - What user stories you generated and what perspectives they represent
@@ -691,6 +690,8 @@ Format as:
 [Any additional context or constraints]
 
 CRITICAL: After generating this rewrite, you MUST use the update_task tool to REPLACE the task description with your new version for task ID: ${args.taskId}. This is NOT optional - it is part of processing the "rewrite" tag.
+
+⚠️  IMPORTANT RESTRICTION: You are NOT allowed to change the task status. The user will update the task status manually in Notion. Do NOT use any tool or method to change status from Ready to In Progress or to Done.
 
 FEEDBACK TO USER: After updating the description, provide thoughtful feedback explaining:
 - What was unclear or ambiguous in the original task
@@ -740,6 +741,8 @@ Format your initial analysis as:
 **Ready to code:** [Yes/No - explain if no]
 
 MANDATORY: After providing this brief analysis, immediately use your available tools (Read, Edit, Write, Bash, etc.) to implement the task. Do NOT just analyze - you must write the actual code. Processing the "code" tag means IMPLEMENTING the feature, not just planning it.
+
+⚠️  IMPORTANT RESTRICTION: You are NOT allowed to change the task status. The user will update the task status manually in Notion. Do NOT use any tool or method to change status from Ready to In Progress or to Done.
 
 FEEDBACK TO USER: During and after implementation, provide thoughtful feedback explaining:
 - What files you're reading/modifying and why
@@ -802,6 +805,8 @@ Format your response as:
 
 CRITICAL: After generating this estimate, you MUST use the add_comment tool to save it to the Notion task (ID: ${args.taskId}). This is NOT optional - it is part of processing the "estimate" tag.
 
+⚠️  IMPORTANT RESTRICTION: You are NOT allowed to change the task status. The user will update the task status manually in Notion. Do NOT use any tool or method to change status from Ready to In Progress or to Done.
+
 FEEDBACK TO USER: After saving the comment, provide thoughtful feedback explaining:
 - The estimated size and time range with justification
 - Why this estimate is reasonable given the scope
@@ -863,6 +868,8 @@ Format your response as:
 [Should this task be marked as Done? Or what needs to be finished?]
 
 CRITICAL: After generating this verification report, you MUST use the add_comment tool to save it to the Notion task (ID: ${args.taskId}). This is NOT optional - it is part of processing the "confirm" tag.
+
+⚠️  IMPORTANT RESTRICTION: You are NOT allowed to change the task status. The user will update the task status manually in Notion. Do NOT use any tool or method to change status from Ready to In Progress or to Done. Even if the implementation is complete, do NOT mark the task as Done - the user will do this.
 
 FEEDBACK TO USER: After saving the comment, provide thoughtful feedback explaining:
 - The implementation status (Complete/Incomplete/Partially Complete) with evidence
