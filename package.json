@@ -1,0 +1,32 @@
+{
+  "name": "taskflow-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Notion task workflow automation with AI-powered tag processing",
+  "keywords": [
+    "mcp",
+    "notion",
+    "task-management",
+    "workflow-automation",
+    "claude-code",
+    "model-context-protocol"
+  ],
+  "author": "Monumental",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/themightyboosh/taskflow-mcp"
+  },
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --filter mcp dev",
+    "start": "pnpm --filter mcp start",
+    "test": "pnpm --filter mcp test"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=10.0.0"
+  }
+}

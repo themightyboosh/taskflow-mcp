@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "taskflow-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/absolute/path/to/taskflow-mcp/packages/mcp/index.js"],
+      "env": {}
+    }
+  }
+}

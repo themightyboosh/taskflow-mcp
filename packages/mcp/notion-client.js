@@ -1,0 +1,307 @@
+/**
+ * Notion API Client
+ *
+ * Wrapper around @notionhq/client with retry logic and helper functions
+ * for querying tasks, updating properties, and managing comments.
+ */
+
+import { Client } from '@notionhq/client';
+import { loadConfig } from './utils/config-loader.js';
+
+// Initialize Notion client
+const { token, databaseId } = loadConfig();
+const notion = new Client({ auth: token });
+
+// Export for use by other modules (e.g., image downloader)
+export { notion };
+
+/**
+ * Query tasks with MCP tags
+ * @param {number} limit - Max number of tasks to return
+ * @param {string|null} status - Filter by status (Ready, In Progress, Done)
+ * @returns {Promise<Array>} Array of task objects
+ */
+export async function queryTasksWithMcpTags(limit = 100, status = null) {
+  return retryWithBackoff(async () => {
+    const filter = {
+      and: [
+        {
+          property: 'MCP',
+          multi_select: {
+            is_not_empty: true,
+          },
+        },
+      ],
+    };
+
+    // Add status filter if provided
+    if (status) {
+      filter.and.push({
+        property: 'Status',
+        status: {
+          equals: status,
+        },
+      });
+    }
+
+    const response = await notion.databases.query({
+      database_id: databaseId,
+      filter,
+      sorts: [
+        { property: 'Priority', direction: 'descending' },
+        { property: 'Status', direction: 'ascending' },
+      ],
+      page_size: Math.min(limit, 100),
+    });
+
+    return response.results.map(page => formatTask(page));
+  });
+}
+
+/**
+ * Query tasks by status (with or without MCP tags)
+ * @param {string} status - Status to filter by
+ * @param {boolean} mcpTagsOnly - Only return tasks with MCP tags
+ * @returns {Promise<Array>} Array of task objects
+ */
+export async function queryTasksByStatus(status, mcpTagsOnly = true) {
+  return mcpTagsOnly
+    ? queryTasksWithMcpTags(100, status)
+    : retryWithBackoff(async () => {
+        const response = await notion.databases.query({
+          database_id: databaseId,
+          filter: {
+            property: 'Status',
+            status: {
+              equals: status,
+            },
+          },
+          sorts: [
+            { property: 'Priority', direction: 'descending' },
+          ],
+        });
+
+        return response.results.map(page => formatTask(page));
+      });
+}
+
+/**
+ * Get a single task by ID
+ * @param {string} pageId - Notion page ID
+ * @returns {Promise<object>} Task object
+ */
+export async function getTask(pageId) {
+  return retryWithBackoff(async () => {
+    const page = await notion.pages.retrieve({ page_id: pageId });
+    return formatTask(page);
+  });
+}
+
+/**
+ * Remove a tag from a task's MCP multi-select property
+ * @param {string} pageId - Notion page ID
+ * @param {string} tagName - Tag to remove
+ * @returns {Promise<void>}
+ */
+export async function removeTag(pageId, tagName) {
+  return retryWithBackoff(async () => {
+    const page = await notion.pages.retrieve({ page_id: pageId });
+    const currentTags = page.properties.MCP.multi_select;
+    const updatedTags = currentTags.filter(t => t.name !== tagName);
+
+    await notion.pages.update({
+      page_id: pageId,
+      properties: {
+        MCP: { multi_select: updatedTags },
+      },
+    });
+  });
+}
+
+/**
+ * Add a comment to a Notion page
+ * @param {string} pageId - Notion page ID
+ * @param {string} comment - Comment text (markdown supported)
+ * @returns {Promise<void>}
+ */
+export async function addComment(pageId, comment) {
+  return retryWithBackoff(async () => {
+    await notion.comments.create({
+      parent: { page_id: pageId },
+      rich_text: [{ type: 'text', text: { content: comment } }],
+    });
+  });
+}
+
+/**
+ * Update task description (content property)
+ * @param {string} pageId - Notion page ID
+ * @param {string} description - New description
+ * @returns {Promise<void>}
+ */
+export async function updateTaskDescription(pageId, description) {
+  return retryWithBackoff(async () => {
+    const page = await notion.pages.retrieve({ page_id: pageId });
+
+    // Find the content property (could be "Description", "Content", or "Name")
+    const properties = page.properties;
+    const contentProp = properties.Description || properties.Content || properties.Name;
+
+    if (!contentProp) {
+      throw new Error('Could not find description property (tried: Description, Content, Name)');
+    }
+
+    const propertyName = Object.keys(properties).find(
+      k => properties[k] === contentProp
+    );
+
+    await notion.pages.update({
+      page_id: pageId,
+      properties: {
+        [propertyName]: {
+          rich_text: [{ type: 'text', text: { content: description } }],
+        },
+      },
+    });
+  });
+}
+
+/**
+ * Update task status
+ * @param {string} pageId - Notion page ID
+ * @param {string} status - New status (Ready, In Progress, Done)
+ * @returns {Promise<void>}
+ */
+export async function updateTaskStatus(pageId, status) {
+  return retryWithBackoff(async () => {
+    await notion.pages.update({
+      page_id: pageId,
+      properties: {
+        Status: {
+          status: { name: status },
+        },
+      },
+    });
+  });
+}
+
+/**
+ * Append content to the page body (as new blocks)
+ * @param {string} pageId - Notion page ID
+ * @param {string} content - Content to append (will be converted to paragraph blocks)
+ * @returns {Promise<void>}
+ */
+export async function appendToPageBody(pageId, content) {
+  return retryWithBackoff(async () => {
+    // Split content into paragraphs
+    const paragraphs = content.split('\n\n').filter(p => p.trim());
+
+    const children = paragraphs.map(para => ({
+      object: 'block',
+      type: 'paragraph',
+      paragraph: {
+        rich_text: [{ type: 'text', text: { content: para } }],
+      },
+    }));
+
+    await notion.blocks.children.append({
+      block_id: pageId,
+      children,
+    });
+  });
+}
+
+/**
+ * Format a Notion page into a task object
+ * @param {object} page - Raw Notion page object
+ * @returns {object} Formatted task object
+ */
+function formatTask(page) {
+  return {
+    id: page.id,
+    url: page.url,
+    title: extractTitle(page),
+    description: extractDescription(page),
+    status: extractStatus(page),
+    priority: extractPriority(page),
+    mcpTags: extractMcpTags(page),
+    properties: page.properties,
+    createdTime: page.created_time,
+    lastEditedTime: page.last_edited_time,
+  };
+}
+
+/**
+ * Extract title from page properties
+ */
+function extractTitle(page) {
+  const titleProp = Object.values(page.properties).find(p => p.type === 'title');
+  if (!titleProp || !titleProp.title || titleProp.title.length === 0) {
+    return 'Untitled';
+  }
+  return titleProp.title.map(t => t.plain_text).join('');
+}
+
+/**
+ * Extract description from page properties
+ */
+function extractDescription(page) {
+  const descProp = page.properties.Description || page.properties.Content;
+  if (!descProp || !descProp.rich_text || descProp.rich_text.length === 0) {
+    return '';
+  }
+  return descProp.rich_text.map(t => t.plain_text).join('');
+}
+
+/**
+ * Extract status from page properties
+ */
+function extractStatus(page) {
+  if (!page.properties.Status || !page.properties.Status.status) {
+    return 'Unknown';
+  }
+  return page.properties.Status.status.name;
+}
+
+/**
+ * Extract priority from page properties
+ */
+function extractPriority(page) {
+  if (!page.properties.Priority || !page.properties.Priority.select) {
+    return 'Medium';
+  }
+  return page.properties.Priority.select.name;
+}
+
+/**
+ * Extract MCP tags from page properties
+ */
+function extractMcpTags(page) {
+  if (!page.properties.MCP || !page.properties.MCP.multi_select) {
+    return [];
+  }
+  return page.properties.MCP.multi_select.map(tag => tag.name);
+}
+
+/**
+ * Retry a function with exponential backoff
+ * @param {Function} fn - Async function to retry
+ * @param {number} maxRetries - Maximum number of retries
+ * @returns {Promise<any>} Result of function
+ */
+async function retryWithBackoff(fn, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      // Don't retry on last attempt
+      if (i === maxRetries - 1) {
+        throw error;
+      }
+
+      // Exponential backoff: 1s, 2s, 4s
+      const delay = Math.pow(2, i) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
