@@ -57,7 +57,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: 'process_tasks',
-        description: 'Process all tasks with MCP tags. Processes tags in priority order: think like → interrogate → rewrite → expand → critique → user stories → to-do → code. Only "code" tag triggers implementation. Removes each tag after successful processing.',
+        description: 'Process all tasks with MCP tags. Processes tags in priority order: think like → interrogate → rewrite → estimate → expand → critique → user stories → to-do → code → confirm. Only "code" tag triggers implementation. "confirm" verifies implementation is complete. Removes each tag after successful processing.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -384,12 +384,34 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => {
         ],
       },
       {
+        name: 'estimate_task',
+        description: 'Provide commentary on level of effort and refactoring needed for the task',
+        arguments: [
+          {
+            name: 'taskId',
+            description: 'Notion page ID of the task to estimate',
+            required: true,
+          },
+        ],
+      },
+      {
         name: 'prepare_for_coding',
         description: 'Analyze task and prepare it for implementation. Reviews requirements, identifies files to change, and then starts coding',
         arguments: [
           {
             name: 'taskId',
             description: 'Notion page ID of the task marked for coding',
+            required: true,
+          },
+        ],
+      },
+      {
+        name: 'confirm_implementation',
+        description: 'Verify that the task has been fully implemented and completed',
+        arguments: [
+          {
+            name: 'taskId',
+            description: 'Notion page ID of the task to verify',
             required: true,
           },
         ],
@@ -614,6 +636,108 @@ After providing this analysis, proceed with implementation if ready.`;
         break;
       }
 
+      case 'estimate_task': {
+        promptText = `Provide an estimate of level of effort and refactoring needed for this task.
+
+${taskDetails}
+
+Your Job:
+1. Assess the complexity and scope of the task
+2. Estimate level of effort (Small, Medium, Large, Extra Large)
+3. Identify any refactoring opportunities or technical debt
+4. Note any architectural considerations
+5. Suggest optimizations or improvements
+6. Estimate time range (hours/days)
+
+Consider:
+- Current codebase complexity
+- Number of files/components affected
+- Testing requirements
+- Integration complexity
+- Technical debt that could be addressed
+- Potential refactoring opportunities
+
+Format your response as:
+
+## Effort Estimate
+
+**Size:** [Small / Medium / Large / Extra Large]
+**Time Range:** [X-Y hours / days]
+
+## Scope Analysis
+[What needs to be done]
+
+## Refactoring Opportunities
+- [Potential improvement 1]
+- [Potential improvement 2]
+
+## Technical Considerations
+- [Architecture note 1]
+- [Architecture note 2]
+
+## Risks & Complexities
+- [Risk or complexity 1]
+- [Risk or complexity 2]
+
+## Recommendation
+[Suggested approach and priorities]
+
+After you provide this estimate, I will save it as a comment on the task.`;
+        break;
+      }
+
+      case 'confirm_implementation': {
+        promptText = `Verify that this task has been fully implemented and completed.
+
+${taskDetails}
+
+Your Job:
+1. Review what the task was supposed to accomplish
+2. Check if the implementation exists in the codebase
+3. Verify all acceptance criteria are met
+4. Identify any gaps or incomplete work
+5. Confirm the implementation is production-ready
+
+Check for:
+- Files that should have been created/modified exist
+- Code follows the requirements
+- Tests are written (if applicable)
+- Documentation is updated (if needed)
+- No obvious bugs or issues
+- Acceptance criteria met
+
+Format your response as:
+
+## Implementation Status
+
+**Status:** [Complete / Incomplete / Partially Complete]
+
+## What Was Done
+- [Accomplishment 1]
+- [Accomplishment 2]
+
+## Files Changed/Created
+- [File path 1]
+- [File path 2]
+
+## Verification Checklist
+- [✓] [Requirement 1 met]
+- [✗] [Requirement 2 NOT met]
+- [✓] [Requirement 3 met]
+
+## Gaps / Missing Work
+[List any incomplete items or issues found]
+
+## Production Readiness
+[Assessment of whether this is ready to ship]
+
+## Recommendation
+[Should this task be marked as Done? Or what needs to be finished?]
+
+After you provide this verification, I will save it as a comment on the task.`;
+        break;
+      }
+
       default:
         throw new Error(`Unknown prompt: ${name}`);
     }
@@ -742,10 +866,12 @@ async function processTag(task, tag, persona, dryRun) {
   const promptMap = {
     'interrogate': 'interrogate_task',
     'expand': 'expand_task',
+    'estimate': 'estimate_task',
     'critique': 'critique_task',
     'user stories': 'generate_user_stories',
     'rewrite': 'rewrite_task',
     'code': 'prepare_for_coding',
+    'confirm': 'confirm_implementation',
   };
 
   const promptName = promptMap[tagLower];

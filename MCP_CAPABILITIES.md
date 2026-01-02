@@ -45,11 +45,13 @@ Tools are direct function calls that perform specific actions.
 1. `think like [X]` - Set persona context
 2. `interrogate` - Ask questions
 3. `rewrite` - Rewrite description
-4. `expand` - Add detail
-5. `critique` - Provide feedback
-6. `user stories` - Generate stories (appended to task description)
-7. `to-do` - Add to todo list
-8. `code` - Trigger implementation (ONLY tag that writes code)
+4. `estimate` - Estimate effort and refactoring
+5. `expand` - Add detail
+6. `critique` - Provide feedback
+7. `user stories` - Generate stories (appended to task description)
+8. `to-do` - Add to todo list
+9. `code` - Trigger implementation (ONLY tag that writes code)
+10. `confirm` - Verify implementation complete
 
 **Example Usage:**
 ```
@@ -503,6 +505,57 @@ Rewrite task abc123def456
 
 ---
 
+### `estimate_task`
+
+**Purpose:** Provide commentary on level of effort and refactoring needs.
+
+**Arguments:**
+```json
+{
+  "taskId": "string"  // Notion page ID (required)
+}
+```
+
+**Behavior:**
+1. Assesses complexity and scope
+2. Estimates effort (Small, Medium, Large, Extra Large)
+3. Identifies refactoring opportunities
+4. Notes architectural considerations
+5. Estimates time range
+
+**Usage:**
+```
+Estimate task abc123def456
+```
+
+**Output Format:**
+```markdown
+## Effort Estimate
+
+**Size:** [Small / Medium / Large / Extra Large]
+**Time Range:** [X-Y hours / days]
+
+## Scope Analysis
+[What needs to be done]
+
+## Refactoring Opportunities
+- [Potential improvement 1]
+- [Potential improvement 2]
+
+## Technical Considerations
+- [Architecture notes]
+
+## Risks & Complexities
+- [Risks identified]
+
+## Recommendation
+[Suggested approach and priorities]
+```
+
+**After prompt:** Save output as comment using `add_comment` tool
+
+---
+
 ### `prepare_for_coding`
 
 **Purpose:** Analyze task and prepare for implementation. Then start coding.
@@ -550,6 +603,67 @@ Process my Notion tasks  # Tasks with "code" tag trigger this prompt
 
 [Proceeds with implementation]
 ```
+
+---
+
+### `confirm_implementation`
+
+**Purpose:** Verify that the task has been fully implemented and completed.
+
+**Arguments:**
+```json
+{
+  "taskId": "string"  // Notion page ID (required)
+}
+```
+
+**Behavior:**
+1. Reviews what task was supposed to accomplish
+2. Checks if implementation exists in codebase
+3. Verifies all acceptance criteria met
+4. Identifies gaps or incomplete work
+5. Confirms production readiness
+
+**Usage:**
+```
+Confirm implementation of task abc123def456
+```
+
+Or triggered automatically:
+```
+Process my Notion tasks  # Tasks with "confirm" tag trigger this prompt
+```
+
+**Output Format:**
+```markdown
+## Implementation Status
+
+**Status:** [Complete / Incomplete / Partially Complete]
+
+## What Was Done
+- [Accomplishment 1]
+- [Accomplishment 2]
+
+## Files Changed/Created
+- [File path 1]
+- [File path 2]
+
+## Verification Checklist
+- [✓] [Requirement 1 met]
+- [✗] [Requirement 2 NOT met]
+- [✓] [Requirement 3 met]
+
+## Gaps / Missing Work
+[List any incomplete items]
+
+## Production Readiness
+[Assessment of readiness to ship]
+
+## Recommendation
+[Should task be marked Done? What needs finishing?]
+```
+
+**After prompt:** Save verification results as comment using `add_comment` tool
 
 ---
 

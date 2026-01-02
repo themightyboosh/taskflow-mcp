@@ -14,13 +14,15 @@ const TAG_PRIORITY = {
   // Phase 2: Task Refinement
   'interrogate': 2,
   'rewrite': 3,
-  'expand': 4,
-  'critique': 5,
-  'user stories': 6,
+  'estimate': 4,
+  'expand': 5,
+  'critique': 6,
+  'user stories': 7,
 
   // Phase 3: Action
-  'to-do': 7,
-  'code': 8,
+  'to-do': 8,
+  'code': 9,
+  'confirm': 10,
 };
 
 /**
@@ -93,10 +95,12 @@ export function getProcessorForTag(tag) {
     'interrogate': 'interrogate',
     'expand': 'expand',
     'rewrite': 'rewrite',
+    'estimate': 'estimate',
     'critique': 'critique',
     'user stories': 'user-stories',
     'to-do': 'todo',
     'code': 'code',
+    'confirm': 'confirm',
   };
 
   return processors[normalizedTag] || null;
