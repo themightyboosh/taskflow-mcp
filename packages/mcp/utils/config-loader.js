@@ -10,30 +10,30 @@ import { existsSync } from 'fs';
 import dotenv from 'dotenv';
 
 /**
- * Load configuration from .env file in current working directory
+ * Load configuration from environment variables or .env file
+ * Priority: 1) Environment variables (from MCP config), 2) .env file in cwd
  * @returns {{token: string, databaseId: string}} Configuration object
- * @throws {Error} If .env file not found or required variables missing
+ * @throws {Error} If required variables missing
  */
 export function loadConfig() {
-  const cwdEnvPath = resolve(process.cwd(), '.env');
+  // First, check if environment variables are already set (e.g., from MCP server config)
+  let token = process.env.NOTION_TOKEN;
+  let databaseId = process.env.NOTION_DATABASE_ID;
 
-  if (!existsSync(cwdEnvPath)) {
-    throw new Error(
-      `❌ No .env file found in current directory: ${process.cwd()}\n\n` +
-      'taskflow-mcp requires per-project configuration.\n\n' +
-      'Create a .env file with:\n' +
-      '  NOTION_TOKEN=ntn_xxx\n' +
-      '  NOTION_DATABASE_ID=xxx\n\n' +
-      'Get your Notion integration token from: https://www.notion.so/my-integrations'
-    );
+  // If not set, try loading from .env file in current working directory
+  if (!token || !databaseId) {
+    const cwdEnvPath = resolve(process.cwd(), '.env');
+
+    if (existsSync(cwdEnvPath)) {
+      // Load environment variables from .env file (don't override existing ones)
+      dotenv.config({ path: cwdEnvPath, override: false });
+
+      token = process.env.NOTION_TOKEN;
+      databaseId = process.env.NOTION_DATABASE_ID;
+    }
   }
 
-  // Load environment variables
-  dotenv.config({ path: cwdEnvPath, override: true });
-
-  const token = process.env.NOTION_TOKEN;
-  const databaseId = process.env.NOTION_DATABASE_ID;
-
+  // Validate that we have the required configuration
   if (!token || !databaseId) {
     const missing = [];
     if (!token) missing.push('NOTION_TOKEN');
@@ -41,9 +41,12 @@ export function loadConfig() {
 
     throw new Error(
       `❌ Missing required environment variables: ${missing.join(', ')}\n\n` +
-      'Your .env file must contain:\n' +
-      '  NOTION_TOKEN=ntn_xxx\n' +
-      '  NOTION_DATABASE_ID=xxx'
+      'taskflow-mcp requires configuration via:\n' +
+      '  1. Environment variables (set by MCP server config), OR\n' +
+      '  2. .env file in current directory with:\n' +
+      '     NOTION_TOKEN=ntn_xxx\n' +
+      '     NOTION_DATABASE_ID=xxx\n\n' +
+      'Get your Notion integration token from: https://www.notion.so/my-integrations'
     );
   }
 
