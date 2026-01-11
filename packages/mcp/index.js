@@ -467,7 +467,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
     const task = await notionClient.getTask(args.taskId);
     const imagePaths = await downloadTaskImages(notionClient.notion, args.taskId);
 
-    // Format task details for prompt
+    // Format task details for prompt with full page content
     const taskDetails = `
 ## Task: ${task.title}
 
@@ -476,8 +476,8 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 **MCP Tags:** ${task.mcpTags.join(', ')}
 **URL:** ${task.url}
 
-**Description:**
-${task.description || '(No description provided)'}
+**Full Page Content:**
+${task.fullContent || task.description || '(No content provided)'}
 
 **Images:** ${imagePaths.length > 0 ? `${imagePaths.length} images downloaded to:\n${imagePaths.map(p => `- ${p}`).join('\n')}` : 'None'}
 `.trim();

@@ -19,7 +19,7 @@ export { notion };
  * Query tasks with MCP tags
  * @param {number} limit - Max number of tasks to return
  * @param {string|null} status - Filter by status (Ready, In Progress, Done)
- * @returns {Promise<Array>} Array of task objects
+ * @returns {Promise<Array>} Array of task objects with full page content
  */
 export async function queryTasksWithMcpTags(limit = 100, status = null) {
   return retryWithBackoff(async () => {
@@ -54,7 +54,19 @@ export async function queryTasksWithMcpTags(limit = 100, status = null) {
       page_size: Math.min(limit, 100),
     });
 
-    return response.results.map(page => formatTask(page));
+    // Fetch blocks for each task to get full page content
+    const tasksWithBlocks = await Promise.all(
+      response.results.map(async (page) => {
+        const blocks = await notion.blocks.children.list({ block_id: page.id });
+        return {
+          ...formatTask(page),
+          blocks: blocks.results.map(block => formatBlock(block)),
+          fullContent: extractFullContent(blocks.results),
+        };
+      })
+    );
+
+    return tasksWithBlocks;
   });
 }
 
@@ -62,7 +74,7 @@ export async function queryTasksWithMcpTags(limit = 100, status = null) {
  * Query tasks by status (with or without MCP tags)
  * @param {string} status - Status to filter by
  * @param {boolean} mcpTagsOnly - Only return tasks with MCP tags
- * @returns {Promise<Array>} Array of task objects
+ * @returns {Promise<Array>} Array of task objects with full page content
  */
 export async function queryTasksByStatus(status, mcpTagsOnly = true) {
   return mcpTagsOnly
@@ -81,19 +93,37 @@ export async function queryTasksByStatus(status, mcpTagsOnly = true) {
           ],
         });
 
-        return response.results.map(page => formatTask(page));
+        // Fetch blocks for each task to get full page content
+        const tasksWithBlocks = await Promise.all(
+          response.results.map(async (page) => {
+            const blocks = await notion.blocks.children.list({ block_id: page.id });
+            return {
+              ...formatTask(page),
+              blocks: blocks.results.map(block => formatBlock(block)),
+              fullContent: extractFullContent(blocks.results),
+            };
+          })
+        );
+
+        return tasksWithBlocks;
       });
 }
 
 /**
  * Get a single task by ID
  * @param {string} pageId - Notion page ID
- * @returns {Promise<object>} Task object
+ * @returns {Promise<object>} Task object with full page content
  */
 export async function getTask(pageId) {
   return retryWithBackoff(async () => {
     const page = await notion.pages.retrieve({ page_id: pageId });
-    return formatTask(page);
+    const blocks = await notion.blocks.children.list({ block_id: pageId });
+
+    return {
+      ...formatTask(page),
+      blocks: blocks.results.map(block => formatBlock(block)),
+      fullContent: extractFullContent(blocks.results),
+    };
   });
 }
 
@@ -110,6 +140,7 @@ export async function getTaskWithBlocks(pageId) {
     return {
       ...formatTask(page),
       blocks: blocks.results.map(block => formatBlock(block)),
+      fullContent: extractFullContent(blocks.results),
     };
   });
 }
@@ -358,6 +389,48 @@ function extractMcpTags(page) {
     return [];
   }
   return page.properties.MCP.multi_select.map(tag => tag.name);
+}
+
+/**
+ * Extract full content from blocks as readable text
+ * @param {Array} blocks - Array of Notion block objects
+ * @returns {string} Full page content as text
+ */
+function extractFullContent(blocks) {
+  if (!blocks || blocks.length === 0) {
+    return '';
+  }
+
+  return blocks.map(block => {
+    const formatted = formatBlock(block);
+
+    switch (block.type) {
+      case 'heading_1':
+        return `# ${formatted.text}\n`;
+      case 'heading_2':
+        return `## ${formatted.text}\n`;
+      case 'heading_3':
+        return `### ${formatted.text}\n`;
+      case 'bulleted_list_item':
+        return `- ${formatted.text}`;
+      case 'numbered_list_item':
+        return `${formatted.text}`;
+      case 'to_do':
+        return `- [${formatted.checked ? 'x' : ' '}] ${formatted.text}`;
+      case 'code':
+        return `\`\`\`${formatted.language}\n${formatted.text}\n\`\`\`\n`;
+      case 'quote':
+        return `> ${formatted.text}\n`;
+      case 'callout':
+        return `**${formatted.text}**\n`;
+      case 'image':
+        return `![${formatted.caption}](${formatted.url})\n`;
+      case 'paragraph':
+        return formatted.text ? `${formatted.text}\n` : '';
+      default:
+        return formatted.text ? `${formatted.text}\n` : '';
+    }
+  }).join('\n');
 }
 
 /**
